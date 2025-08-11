@@ -3,12 +3,11 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"github.com/mlflow/mlflow-go-backend/pkg/contract/service"
-	"github.com/mlflow/mlflow-go-backend/pkg/protos"
 	"github.com/mlflow/mlflow-go-backend/pkg/server/parser"
+	"github.com/mlflow/mlflow-go-backend/pkg/contract/service"
 	"github.com/mlflow/mlflow-go-backend/pkg/utils"
+	"github.com/mlflow/mlflow-go-backend/pkg/protos"
 )
 
 func RegisterTrackingServiceRoutes(service service.TrackingService, parser *parser.HTTPRequestParser, app *fiber.App) {
@@ -252,7 +251,6 @@ func RegisterTrackingServiceRoutes(service service.TrackingService, parser *pars
 		if err != nil {
 			return err
 		}
-		fmt.Println("output: ", output)
 		return ctx.JSON(output)
 	})
 	app.Post("/mlflow/runs/log-batch", func(ctx *fiber.Ctx) error {

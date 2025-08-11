@@ -25,7 +25,7 @@ func (ts TrackingService) SetTraceTag(
 func (ts TrackingService) DeleteTraceTag(
 	ctx context.Context, input *protos.DeleteTraceTag,
 ) (*protos.DeleteTraceTag_Response, *contract.Error) {
-	tag, err := ts.Store.GetTraceTag(ctx, input.GetRequestId(), input.GetKey())
+	tag, err := ts.Store.GetTraceTag(ctx, input.GetTraceId(), input.GetKey())
 	if err != nil {
 		return nil, contract.NewError(protos.ErrorCode_INTERNAL_ERROR, fmt.Sprintf("error getting trace tag: %v", err))
 	}
@@ -34,9 +34,9 @@ func (ts TrackingService) DeleteTraceTag(
 		return nil, contract.NewError(
 			protos.ErrorCode_RESOURCE_DOES_NOT_EXIST,
 			fmt.Sprintf(
-				"No trace tag with key '%s' for trace with request_id '%s'",
+				"No trace tag with key '%s' for trace with trace_id '%s'",
 				input.GetKey(),
-				input.GetRequestId(),
+				input.GetTraceId(),
 			),
 		)
 	}

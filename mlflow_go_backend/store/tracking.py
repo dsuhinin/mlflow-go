@@ -209,9 +209,9 @@ class _TrackingStore:
         request = DeleteTag(run_id=run_id, key=key)
         self.service.call_endpoint(get_lib().TrackingServiceDeleteTag, request)
 
-    def delete_trace_tag(self, request_id: str, key: str):
+    def delete_trace_tag(self, trace_id: str, key: str):
         request = DeleteTraceTag(
-            request_id=request_id,
+            trace_id=trace_id,
             key=key,
         )
         self.service.call_endpoint(get_lib().TrackingServiceDeleteTraceTag, request)
