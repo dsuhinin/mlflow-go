@@ -230,17 +230,32 @@ func (s TrackingSQLStore) LogMetric(ctx context.Context, runID string, metric *e
 }
 
 func (s TrackingSQLStore) GetMetricHistory(
-	ctx context.Context, runID, metricKey string,
-) ([]*entities.Metric, *contract.Error) {
-	var metrics []*models.Metric
-	if err := s.db.WithContext(
+	ctx context.Context, runID, metricKey, pageToken string, maxResults *int32,
+) ([]*entities.Metric, string, *contract.Error) {
+	query := s.db.WithContext(
 		ctx,
 	).Where(
 		"run_uuid = ?", runID,
 	).Where(
 		"key = ?", metricKey,
-	).Find(&metrics).Error; err != nil {
-		return nil, contract.NewError(
+	)
+
+	// MaxResults
+	if maxResults != nil {
+		query = query.Limit(int(*maxResults))
+	}
+
+	// PageToken
+	offset, contractError := getOffset(pageToken)
+	if contractError != nil {
+		return nil, "", contractError
+	}
+
+	query = query.Offset(offset)
+
+	var metrics []*models.Metric
+	if err := query.Find(&metrics).Error; err != nil {
+		return nil, "", contract.NewError(
 			protos.ErrorCode_INTERNAL_ERROR, fmt.Sprintf("error getting metric history: %v", err),
 		)
 	}
@@ -250,5 +265,16 @@ func (s TrackingSQLStore) GetMetricHistory(
 		entityMetrics[i] = metric.ToEntity()
 	}
 
-	return entityMetrics, nil
+	var nextPageToken string
+
+	if maxResults != nil {
+		var contractError *contract.Error
+
+		nextPageToken, contractError = mkNextPageToken(len(entityMetrics), int(*maxResults), offset)
+		if contractError != nil {
+			return nil, "", contractError
+		}
+	}
+
+	return entityMetrics, nextPageToken, nil
 }

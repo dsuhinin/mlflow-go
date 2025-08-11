@@ -3,11 +3,12 @@
 package routes
 
 import (
+	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"github.com/mlflow/mlflow-go-backend/pkg/server/parser"
 	"github.com/mlflow/mlflow-go-backend/pkg/contract/service"
-	"github.com/mlflow/mlflow-go-backend/pkg/utils"
 	"github.com/mlflow/mlflow-go-backend/pkg/protos"
+	"github.com/mlflow/mlflow-go-backend/pkg/server/parser"
+	"github.com/mlflow/mlflow-go-backend/pkg/utils"
 )
 
 func RegisterTrackingServiceRoutes(service service.TrackingService, parser *parser.HTTPRequestParser, app *fiber.App) {
@@ -251,6 +252,7 @@ func RegisterTrackingServiceRoutes(service service.TrackingService, parser *pars
 		if err != nil {
 			return err
 		}
+		fmt.Println("output: ", output)
 		return ctx.JSON(output)
 	})
 	app.Post("/mlflow/runs/log-batch", func(ctx *fiber.Ctx) error {
@@ -303,6 +305,28 @@ func RegisterTrackingServiceRoutes(service service.TrackingService, parser *pars
 			return err
 		}
 		output, err := service.GetTraceInfo(utils.NewContextWithLoggerFromFiberContext(ctx), input)
+		if err != nil {
+			return err
+		}
+		return ctx.JSON(output)
+	})
+	app.Get("/mlflow/traces/:trace_id", func(ctx *fiber.Ctx) error {
+		input := &protos.GetTraceInfoV3{}
+		if err := parser.ParseQuery(ctx, input); err != nil {
+			return err
+		}
+		output, err := service.GetTraceInfoV3(utils.NewContextWithLoggerFromFiberContext(ctx), input)
+		if err != nil {
+			return err
+		}
+		return ctx.JSON(output)
+	})
+	app.Post("/mlflow/traces", func(ctx *fiber.Ctx) error {
+		input := &protos.StartTraceV3{}
+		if err := parser.ParseBody(ctx, input); err != nil {
+			return err
+		}
+		output, err := service.StartTraceV3(utils.NewContextWithLoggerFromFiberContext(ctx), input)
 		if err != nil {
 			return err
 		}

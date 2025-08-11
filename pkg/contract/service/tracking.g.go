@@ -36,5 +36,7 @@ type TrackingService interface {
 	StartTrace(ctx context.Context, input *protos.StartTrace) (*protos.StartTrace_Response, *contract.Error)
 	EndTrace(ctx context.Context, input *protos.EndTrace) (*protos.EndTrace_Response, *contract.Error)
 	GetTraceInfo(ctx context.Context, input *protos.GetTraceInfo) (*protos.GetTraceInfo_Response, *contract.Error)
+	GetTraceInfoV3(ctx context.Context, input *protos.GetTraceInfoV3) (*protos.GetTraceInfoV3_Response, *contract.Error)
+	StartTraceV3(ctx context.Context, input *protos.StartTraceV3) (*protos.StartTraceV3_Response, *contract.Error)
 	DeleteTraces(ctx context.Context, input *protos.DeleteTraces) (*protos.DeleteTraces_Response, *contract.Error)
 }
