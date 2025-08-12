@@ -27,7 +27,7 @@ func (ts TrackingService) DeleteTraceTag(
 ) (*protos.DeleteTraceTag_Response, *contract.Error) {
 	tag, err := ts.Store.GetTraceTag(ctx, input.GetTraceId(), input.GetKey())
 	if err != nil {
-		return nil, contract.NewError(protos.ErrorCode_INTERNAL_ERROR, fmt.Sprintf("error getting trace tag: %v", err))
+		return nil, err
 	}
 
 	if tag == nil {

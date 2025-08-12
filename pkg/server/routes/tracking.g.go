@@ -198,7 +198,7 @@ func RegisterTrackingServiceRoutes(service service.TrackingService, parser *pars
 		}
 		return ctx.JSON(output)
 	})
-	app.Delete("/mlflow/traces/:request_id/tags", func(ctx *fiber.Ctx) error {
+	app.Delete("/mlflow/traces/:trace_id/tags", func(ctx *fiber.Ctx) error {
 		input := &protos.DeleteTraceTag{}
 		if err := parser.ParseBody(ctx, input); err != nil {
 			return err
