@@ -49,6 +49,13 @@ jobs:
         run: go install github.com/magefile/mage@v1.15.0
       - name: Initialize MLflow repo
         run: mage repo:init
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: ""
+          auto-update-conda: false
+          python-version: ${{ matrix.python }}
+          use-mamba: false
       - name: Create virtual environment
         run: uv venv --python ${{ matrix.python }}
       - name: Install our package in editable mode
