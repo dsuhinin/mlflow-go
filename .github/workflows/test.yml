@@ -52,7 +52,7 @@ jobs:
       - name: Install Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          activate-environment: ""
+          activate-environment: true
           auto-update-conda: false
           python-version: ${{ matrix.python }}
           use-mamba: false
