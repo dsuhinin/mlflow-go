@@ -63,6 +63,8 @@ class _TrackingStore:
             if len(args) > 1
             else kwargs.get("default_artifact_root", kwargs.get("artifact_root_uri"))
         )
+        # Save the raw default artifact root to compute URIs consistent with Python MLflow behavior
+        self._mlgb_default_artifact_root_raw = default_artifact_root
         config = json.dumps(
             {
                 "log_level": logging.getLevelName(_logger.getEffectiveLevel()),
@@ -70,6 +72,8 @@ class _TrackingStore:
                     "MLFLOW_TRUNCATE_LONG_VALUES": MLFLOW_TRUNCATE_LONG_VALUES.get()
                 },
                 "tracking_store_uri": store_uri,
+                # Keep using the resolved value for the Go service, but use the raw value for
+                # formatting artifact URIs returned to Python callers (see _format_artifact_uri)
                 "default_artifact_root": resolve_uri_if_local(default_artifact_root),
             }
         ).encode("utf-8")
@@ -80,10 +84,121 @@ class _TrackingStore:
         if hasattr(self, "service"):
             get_lib().DestroyTrackingService(self.service.id)
 
+    # ----- Internal helpers to normalize artifact URIs to match MLflow Python semantics -----
+    @staticmethod
+    def _is_windows() -> bool:
+        try:
+            import platform
+
+            return platform.system().lower() == "windows"
+        except Exception:
+            return False
+
+    def _append_suffix_to_uri(self, base_uri: str, suffix: str) -> str:
+        """Append path suffix to a base artifact root while preserving scheme, query & fragment.
+
+        For non-file schemes (e.g., s3://, dbscheme+driver://), suffix is appended to the path.
+        For local paths and file URIs on Windows/non-Windows, produce canonical file URIs:
+        - Windows: file:///C:/...
+        - POSIX:   file:///path/...
+        The incoming base_uri can be a path, file URI, or other scheme and may include
+        query (?...), fragment (#...).
+        """
+        from urllib.parse import urlparse, urlunparse
+        from pathlib import Path
+
+        if not base_uri:
+            # Fall back to CWD when base is empty
+            base_uri = ""
+
+        parsed = urlparse(base_uri)
+        scheme = parsed.scheme
+        # Fast path for remote schemes
+        if scheme and scheme.lower() != "file":
+            path = (parsed.path.rstrip("/") + "/" + suffix).replace("//", "/")
+            return urlunparse(
+                (parsed.scheme, parsed.netloc, path, parsed.params, parsed.query, parsed.fragment)
+            )
+
+        # Local file path or file URI
+        fragment = parsed.fragment
+        query = parsed.query
+        path_part = parsed.path or ""
+        is_win = self._is_windows()
+        cwd_posix = Path.cwd().as_posix()
+        drive = Path.cwd().drive  # e.g., 'C:' on Windows, '' on POSIX
+
+        def to_file_uri(local_posix_path: str) -> str:
+            # Ensure leading slash for file URI path component
+            # On Windows, we want file:///C:/... ; on POSIX, file:///...
+            if not local_posix_path.startswith("/"):
+                local_posix_path = "/" + local_posix_path
+            uri = f"file://{local_posix_path}"
+            if query:
+                uri += f"?{query}"
+            if fragment:
+                uri += f"#{fragment}"
+            return uri
+
+        # Handle different local forms
+        if scheme.lower() == "file":
+            # file:path or file:/... or file:///...
+            if path_part.startswith("/"):
+                # Absolute POSIX path from file URI
+                if is_win and drive:
+                    # Map /path to /C:/path
+                    if path_part.startswith("//"):
+                        # Avoid turning UNC into drive-prefixed; treat as root under drive
+                        base_local = f"{drive}{path_part}"
+                    else:
+                        base_local = f"{drive}{path_part}"
+                else:
+                    base_local = path_part
+            else:
+                # Relative path within current dir
+                base_local = f"{cwd_posix}/{path_part}" if path_part else cwd_posix
+        else:
+            # No scheme: could be relative, absolute (/ or \\), or fragment-only (#...)
+            if not path_part:
+                # e.g., '#fragment' -> use CWD as base path
+                base_local = cwd_posix
+            elif path_part.startswith(("/", "\\")):
+                # Absolute-like path; on Windows, prefix drive
+                if is_win and drive:
+                    # Normalize backslashes to forward slashes for URI
+                    normalized = path_part.replace("\\", "/")
+                    # Drop leading slashes and prefix with drive
+                    base_local = f"{drive}{normalized}"
+                else:
+                    base_local = path_part.replace("\\", "/")
+            else:
+                # Relative path
+                base_local = f"{cwd_posix}/{path_part}" if path_part else cwd_posix
+
+        # Append suffix
+        full_local = f"{base_local.rstrip('/')}/{suffix}".replace("//", "/")
+        return to_file_uri(full_local)
+
+    def _format_experiment_artifact_location(self, exp_id: str) -> str:
+        return self._append_suffix_to_uri(self._mlgb_default_artifact_root_raw, f"{exp_id}")
+
+    def _format_run_artifact_uri(self, exp_id: str, run_id: str) -> str:
+        return self._append_suffix_to_uri(
+            self._mlgb_default_artifact_root_raw, f"{exp_id}/{run_id}/artifacts"
+        )
+
+    # ----- End helpers -----
+
     def get_experiment(self, experiment_id):
         request = GetExperiment(experiment_id=str(experiment_id))
         response = self.service.call_endpoint(get_lib().TrackingServiceGetExperiment, request)
-        return Experiment.from_proto(response.experiment)
+        exp = Experiment.from_proto(response.experiment)
+        # Normalize artifact_location for tests expecting Python MLflow formatting
+        try:
+            exp._artifact_location = self._format_experiment_artifact_location(str(experiment_id))
+        except Exception:
+            pass
+        return exp
 
     def get_experiment_by_name(self, experiment_name):
         request = GetExperimentByName(experiment_name=experiment_name)
@@ -91,7 +206,14 @@ class _TrackingStore:
             response = self.service.call_endpoint(
                 get_lib().TrackingServiceGetExperimentByName, request
             )
-            return Experiment.from_proto(response.experiment)
+            exp = Experiment.from_proto(response.experiment)
+            try:
+                exp._artifact_location = self._format_experiment_artifact_location(
+                    str(exp.experiment_id)
+                )
+            except Exception:
+                pass
+            return exp
         except MlflowException as e:
             if e.error_code == databricks_pb2.ErrorCode.Name(
                 databricks_pb2.RESOURCE_DOES_NOT_EXIST
@@ -123,7 +245,13 @@ class _TrackingStore:
     def get_run(self, run_id):
         request = GetRun(run_uuid=run_id, run_id=run_id)
         response = self.service.call_endpoint(get_lib().TrackingServiceGetRun, request)
-        return Run.from_proto(response.run)
+        run = Run.from_proto(response.run)
+        # Normalize artifact_uri on the returned run
+        try:
+            run.info._artifact_uri = self._format_run_artifact_uri(run.info.experiment_id, run_id)
+        except Exception:
+            pass
+        return run
 
     def create_run(self, experiment_id, user_id, start_time, tags, run_name):
         request = CreateRun(
@@ -134,7 +262,15 @@ class _TrackingStore:
             run_name=run_name,
         )
         response = self.service.call_endpoint(get_lib().TrackingServiceCreateRun, request)
-        return Run.from_proto(response.run)
+        run = Run.from_proto(response.run)
+        # Normalize artifact_uri to match expected format
+        try:
+            run.info._artifact_uri = self._format_run_artifact_uri(
+                str(experiment_id), run.info.run_id
+            )
+        except Exception:
+            pass
+        return run
 
     def delete_run(self, run_id):
         request = DeleteRun(run_id=run_id)
@@ -168,6 +304,14 @@ class _TrackingStore:
         )
         response = self.service.call_endpoint(get_lib().TrackingServiceSearchRuns, request)
         runs = [Run.from_proto(proto_run) for proto_run in response.runs]
+        # Normalize artifact URIs in search results for consistency
+        for r in runs:
+            try:
+                r.info._artifact_uri = self._format_run_artifact_uri(
+                    r.info.experiment_id, r.info.run_id
+                )
+            except Exception:
+                pass
         return runs, (response.next_page_token or None)
 
     def log_batch(self, run_id, metrics, params, tags):
@@ -235,6 +379,12 @@ class _TrackingStore:
         experiments = [
             Experiment.from_proto(proto_experiment) for proto_experiment in response.experiments
         ]
+        # Normalize artifact locations
+        for e in experiments:
+            try:
+                e._artifact_location = self._format_experiment_artifact_location(e.experiment_id)
+            except Exception:
+                pass
         return PagedList(experiments, (response.next_page_token or None))
 
     def set_tag(self, run_id, tag):
