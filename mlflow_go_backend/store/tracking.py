@@ -104,8 +104,8 @@ class _TrackingStore:
         The incoming base_uri can be a path, file URI, or other scheme and may include
         query (?...), fragment (#...).
         """
-        from pathlib import Path
         from urllib.parse import urlparse, urlunparse
+        from pathlib import Path
 
         if not base_uri:
             # Fall back to CWD when base is empty
