@@ -25,18 +25,18 @@ func (ts TrackingService) SetTraceTag(
 func (ts TrackingService) DeleteTraceTag(
 	ctx context.Context, input *protos.DeleteTraceTag,
 ) (*protos.DeleteTraceTag_Response, *contract.Error) {
-	tag, err := ts.Store.GetTraceTag(ctx, input.GetRequestId(), input.GetKey())
+	tag, err := ts.Store.GetTraceTag(ctx, input.GetTraceId(), input.GetKey())
 	if err != nil {
-		return nil, contract.NewError(protos.ErrorCode_INTERNAL_ERROR, fmt.Sprintf("error getting trace tag: %v", err))
+		return nil, err
 	}
 
 	if tag == nil {
 		return nil, contract.NewError(
 			protos.ErrorCode_RESOURCE_DOES_NOT_EXIST,
 			fmt.Sprintf(
-				"No trace tag with key '%s' for trace with request_id '%s'",
+				"No trace tag with key '%s' for trace with trace_id '%s'",
 				input.GetKey(),
-				input.GetRequestId(),
+				input.GetTraceId(),
 			),
 		)
 	}
@@ -64,6 +64,37 @@ func (ts TrackingService) StartTrace(
 
 	return &protos.StartTrace_Response{
 		TraceInfo: traceInfo.ToProto(),
+	}, nil
+}
+
+func (ts TrackingService) StartTraceV3(
+	ctx context.Context,
+	input *protos.StartTraceV3,
+) (*protos.StartTraceV3_Response, *contract.Error) {
+	inputTraceInfo := input.GetTrace().GetTraceInfo()
+
+	traceInfo, err := ts.Store.SetTraceV3(
+		ctx, &entities.TraceInfoV3{
+			Status:          inputTraceInfo.GetState().String(),
+			RequestID:       inputTraceInfo.GetTraceId(),
+			TimestampMS:     inputTraceInfo.GetRequestTime().AsTime().UnixMilli(),
+			ExperimentID:    inputTraceInfo.GetTraceLocation().GetMlflowExperiment().GetExperimentId(),
+			RequestPreview:  utils.PtrTo(inputTraceInfo.GetRequestPreview()),
+			ResponsePreview: utils.PtrTo(inputTraceInfo.GetResponsePreview()),
+			ClientRequestID: utils.PtrTo(inputTraceInfo.GetClientRequestId()),
+			ExecutionTimeMS: utils.PtrTo(inputTraceInfo.GetExecutionDuration().AsDuration().Milliseconds()),
+		},
+		entities.TraceRequestMetadataFromStartTraceV3ProtoInput(inputTraceInfo.GetTraceMetadata()),
+		entities.TagsFromStartTraceV3ProtoInput(inputTraceInfo.GetTags()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.StartTraceV3_Response{
+		Trace: &protos.Trace{
+			TraceInfo: traceInfo.ToProto(),
+		},
 	}, nil
 }
 
@@ -100,27 +131,42 @@ func (ts TrackingService) GetTraceInfo(
 	}, nil
 }
 
+func (ts TrackingService) GetTraceInfoV3(
+	ctx context.Context, input *protos.GetTraceInfoV3,
+) (*protos.GetTraceInfoV3_Response, *contract.Error) {
+	traceInfo, err := ts.Store.GetTraceV3Info(ctx, input.GetTraceId())
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.GetTraceInfoV3_Response{
+		Trace: &protos.Trace{
+			TraceInfo: traceInfo.ToProto(),
+		},
+	}, nil
+}
+
 func (ts TrackingService) DeleteTraces(
 	ctx context.Context, input *protos.DeleteTraces,
 ) (*protos.DeleteTraces_Response, *contract.Error) {
 	if input.MaxTimestampMillis == nil && len(input.RequestIds) == 0 {
 		return nil, contract.NewError(
 			protos.ErrorCode_INVALID_PARAMETER_VALUE,
-			"Either `max_timestamp_millis` or `request_ids` must be specified.",
+			"Either `max_timestamp_millis` or `trace_ids` must be specified.",
 		)
 	}
 
 	if input.MaxTimestampMillis != nil && input.RequestIds != nil {
 		return nil, contract.NewError(
 			protos.ErrorCode_INVALID_PARAMETER_VALUE,
-			"Only one of `max_timestamp_millis` and `request_ids` can be specified.",
+			"Only one of `max_timestamp_millis` and `trace_ids` can be specified.",
 		)
 	}
 
 	if input.RequestIds != nil && input.MaxTraces != nil {
 		return nil, contract.NewError(
 			protos.ErrorCode_INVALID_PARAMETER_VALUE,
-			"`max_traces` can't be specified if `request_ids` is specified.",
+			"`max_traces` can't be specified if `trace_ids` is specified.",
 		)
 	}
 

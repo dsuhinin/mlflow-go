@@ -53,7 +53,7 @@ func getOffset(pageToken string) (int, *contract.Error) {
 		).Decode(&token); err != nil {
 			return 0, contract.NewErrorWith(
 				protos.ErrorCode_INVALID_PARAMETER_VALUE,
-				fmt.Sprintf("invalid page_token: %q", pageToken),
+				fmt.Sprintf("Invalid page token: %q", pageToken),
 				err,
 			)
 		}

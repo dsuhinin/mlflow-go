@@ -215,6 +215,22 @@ func TrackingServiceGetTraceInfo(serviceID int64, requestData unsafe.Pointer, re
 	}
 	return invokeServiceMethod(service.GetTraceInfo, new(protos.GetTraceInfo), requestData, requestSize, responseSize)
 }
+//export TrackingServiceGetTraceInfoV3
+func TrackingServiceGetTraceInfoV3(serviceID int64, requestData unsafe.Pointer, requestSize C.int, responseSize *C.int) unsafe.Pointer {
+	service, err := trackingServices.Get(serviceID)
+	if err != nil {
+		return makePointerFromError(err, responseSize)
+	}
+	return invokeServiceMethod(service.GetTraceInfoV3, new(protos.GetTraceInfoV3), requestData, requestSize, responseSize)
+}
+//export TrackingServiceStartTraceV3
+func TrackingServiceStartTraceV3(serviceID int64, requestData unsafe.Pointer, requestSize C.int, responseSize *C.int) unsafe.Pointer {
+	service, err := trackingServices.Get(serviceID)
+	if err != nil {
+		return makePointerFromError(err, responseSize)
+	}
+	return invokeServiceMethod(service.StartTraceV3, new(protos.StartTraceV3), requestData, requestSize, responseSize)
+}
 //export TrackingServiceDeleteTraces
 func TrackingServiceDeleteTraces(serviceID int64, requestData unsafe.Pointer, requestSize C.int, responseSize *C.int) unsafe.Pointer {
 	service, err := trackingServices.Get(serviceID)

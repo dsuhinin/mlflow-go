@@ -7,7 +7,7 @@ from mlflow.entities import (
     Metric,
     Run,
     RunInfo,
-    TraceInfoV2,
+    TraceInfo,
     ViewType,
 )
 from mlflow.entities.trace_status import TraceStatus
@@ -27,7 +27,7 @@ from mlflow.protos.service_pb2 import (
     GetExperimentByName,
     GetMetricHistory,
     GetRun,
-    GetTraceInfo,
+    GetTraceInfoV3,
     LogBatch,
     LogMetric,
     LogParam,
@@ -37,7 +37,8 @@ from mlflow.protos.service_pb2 import (
     SearchRuns,
     SetTag,
     SetTraceTag,
-    StartTrace,
+    StartTraceV3,
+    Trace,
     TraceRequestMetadata,
     TraceTag,
     UpdateExperiment,
@@ -208,9 +209,9 @@ class _TrackingStore:
         request = DeleteTag(run_id=run_id, key=key)
         self.service.call_endpoint(get_lib().TrackingServiceDeleteTag, request)
 
-    def delete_trace_tag(self, request_id: str, key: str):
+    def delete_trace_tag(self, trace_id: str, key: str):
         request = DeleteTraceTag(
-            request_id=request_id,
+            trace_id=trace_id,
             key=key,
         )
         self.service.call_endpoint(get_lib().TrackingServiceDeleteTraceTag, request)
@@ -242,27 +243,11 @@ class _TrackingStore:
 
     def start_trace(
         self,
-        experiment_id: str,
-        timestamp_ms: int,
-        request_metadata: Dict[str, str],
-        tags: Dict[str, str],
-    ) -> TraceInfoV2:
-        request = StartTrace(
-            experiment_id=experiment_id,
-            timestamp_ms=timestamp_ms,
-            request_metadata=[
-                TraceRequestMetadata(key=key, value=value)
-                for key, value in request_metadata.items()
-            ]
-            if request_metadata
-            else [],
-            tags=[TraceTag(key=key, value=value) for key, value in tags.items()] if tags else [],
-        )
-        response = self.service.call_endpoint(get_lib().TrackingServiceStartTrace, request)
-        entity = TraceInfoV2.from_proto(response.trace_info)
-        if entity.execution_time_ms == 0:
-            entity.execution_time_ms = None
-        return entity
+        trace_info: TraceInfo,
+    ) -> TraceInfo:
+        request = StartTraceV3(trace=Trace(trace_info=trace_info.to_proto()))
+        response = self.service.call_endpoint(get_lib().TrackingServiceStartTraceV3, request)
+        return TraceInfo.from_proto(response.trace.trace_info)
 
     def end_trace(
         self,
@@ -271,7 +256,7 @@ class _TrackingStore:
         status: TraceStatus,
         request_metadata: Dict[str, str],
         tags: Dict[str, str],
-    ) -> TraceInfoV2:
+    ) -> TraceInfo:
         request = EndTrace(
             request_id=request_id,
             timestamp_ms=timestamp_ms,
@@ -287,28 +272,25 @@ class _TrackingStore:
             else [],
         )
         response = self.service.call_endpoint(get_lib().TrackingServiceEndTrace, request)
-        return TraceInfoV2.from_proto(response.trace_info)
+        return TraceInfo.from_proto(response.trace_info)
 
-    def get_trace_info(self, request_id) -> TraceInfoV2:
-        request = GetTraceInfo(request_id=request_id)
-        response = self.service.call_endpoint(get_lib().TrackingServiceGetTraceInfo, request)
-        entity = TraceInfoV2.from_proto(response.trace_info)
-        if entity.execution_time_ms == 0:
-            entity.execution_time_ms = None
-        return entity
+    def get_trace_info(self, trace_id) -> TraceInfo:
+        request = GetTraceInfoV3(trace_id=trace_id)
+        response = self.service.call_endpoint(get_lib().TrackingServiceGetTraceInfoV3, request)
+        return TraceInfo.from_proto(response.trace.trace_info)
 
     def delete_traces(
         self,
         experiment_id: str,
         max_timestamp_millis: Optional[int] = None,
         max_traces: Optional[int] = None,
-        request_ids: Optional[list[str]] = None,
+        trace_ids: Optional[list[str]] = None,
     ) -> int:
         request = DeleteTraces(
             experiment_id=experiment_id,
             max_timestamp_millis=max_timestamp_millis,
             max_traces=max_traces,
-            request_ids=request_ids,
+            request_ids=trace_ids,
         )
         response = self.service.call_endpoint(get_lib().TrackingServiceDeleteTraces, request)
         return response.traces_deleted
@@ -318,7 +300,10 @@ class _TrackingStore:
             run_id=run_id, metric_key=metric_key, max_results=max_results, page_token=page_token
         )
         response = self.service.call_endpoint(get_lib().TrackingServiceGetMetricHistory, request)
-        return PagedList([Metric.from_proto(metric) for metric in response.metrics], None)
+        return PagedList(
+            [Metric.from_proto(metric) for metric in response.metrics],
+            (response.next_page_token or None),
+        )
 
 
 def TrackingStore(cls):

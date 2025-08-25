@@ -1,3 +1,4 @@
+//nolint:dupl
 package entities
 
 import "github.com/mlflow/mlflow-go-backend/pkg/protos"
@@ -23,6 +24,18 @@ func TraceRequestMetadataFromStartTraceProtoInput(
 		entityMetadata = append(entityMetadata, &TraceRequestMetadata{
 			Key:   m.GetKey(),
 			Value: m.GetValue(),
+		})
+	}
+
+	return entityMetadata
+}
+
+func TraceRequestMetadataFromStartTraceV3ProtoInput(protoMetadata map[string]string) []*TraceRequestMetadata {
+	entityMetadata := make([]*TraceRequestMetadata, 0, len(protoMetadata))
+	for k, v := range protoMetadata {
+		entityMetadata = append(entityMetadata, &TraceRequestMetadata{
+			Key:   k,
+			Value: v,
 		})
 	}
 

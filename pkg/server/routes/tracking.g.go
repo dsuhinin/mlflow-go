@@ -198,7 +198,7 @@ func RegisterTrackingServiceRoutes(service service.TrackingService, parser *pars
 		}
 		return ctx.JSON(output)
 	})
-	app.Delete("/mlflow/traces/:request_id/tags", func(ctx *fiber.Ctx) error {
+	app.Delete("/mlflow/traces/:trace_id/tags", func(ctx *fiber.Ctx) error {
 		input := &protos.DeleteTraceTag{}
 		if err := parser.ParseBody(ctx, input); err != nil {
 			return err
@@ -303,6 +303,28 @@ func RegisterTrackingServiceRoutes(service service.TrackingService, parser *pars
 			return err
 		}
 		output, err := service.GetTraceInfo(utils.NewContextWithLoggerFromFiberContext(ctx), input)
+		if err != nil {
+			return err
+		}
+		return ctx.JSON(output)
+	})
+	app.Get("/mlflow/traces/:trace_id", func(ctx *fiber.Ctx) error {
+		input := &protos.GetTraceInfoV3{}
+		if err := parser.ParseQuery(ctx, input); err != nil {
+			return err
+		}
+		output, err := service.GetTraceInfoV3(utils.NewContextWithLoggerFromFiberContext(ctx), input)
+		if err != nil {
+			return err
+		}
+		return ctx.JSON(output)
+	})
+	app.Post("/mlflow/traces", func(ctx *fiber.Ctx) error {
+		input := &protos.StartTraceV3{}
+		if err := parser.ParseBody(ctx, input); err != nil {
+			return err
+		}
+		output, err := service.StartTraceV3(utils.NewContextWithLoggerFromFiberContext(ctx), input)
 		if err != nil {
 			return err
 		}

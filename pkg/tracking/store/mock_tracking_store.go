@@ -641,36 +641,43 @@ func (_c *MockTrackingStore_GetExperimentByName_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// GetMetricHistory provides a mock function with given fields: ctx, runID, metricKey
-func (_m *MockTrackingStore) GetMetricHistory(ctx context.Context, runID string, metricKey string) ([]*entities.Metric, *contract.Error) {
-	ret := _m.Called(ctx, runID, metricKey)
+// GetMetricHistory provides a mock function with given fields: ctx, runID, metricKey, pageToken, maxResults
+func (_m *MockTrackingStore) GetMetricHistory(ctx context.Context, runID string, metricKey string, pageToken string, maxResults *int32) ([]*entities.Metric, string, *contract.Error) {
+	ret := _m.Called(ctx, runID, metricKey, pageToken, maxResults)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetMetricHistory")
 	}
 
 	var r0 []*entities.Metric
-	var r1 *contract.Error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]*entities.Metric, *contract.Error)); ok {
-		return rf(ctx, runID, metricKey)
+	var r1 string
+	var r2 *contract.Error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, *int32) ([]*entities.Metric, string, *contract.Error)); ok {
+		return rf(ctx, runID, metricKey, pageToken, maxResults)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) []*entities.Metric); ok {
-		r0 = rf(ctx, runID, metricKey)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, *int32) []*entities.Metric); ok {
+		r0 = rf(ctx, runID, metricKey, pageToken, maxResults)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*entities.Metric)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) *contract.Error); ok {
-		r1 = rf(ctx, runID, metricKey)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, *int32) string); ok {
+		r1 = rf(ctx, runID, metricKey, pageToken, maxResults)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*contract.Error)
+		r1 = ret.Get(1).(string)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, string, string, string, *int32) *contract.Error); ok {
+		r2 = rf(ctx, runID, metricKey, pageToken, maxResults)
+	} else {
+		if ret.Get(2) != nil {
+			r2 = ret.Get(2).(*contract.Error)
 		}
 	}
 
-	return r0, r1
+	return r0, r1, r2
 }
 
 // MockTrackingStore_GetMetricHistory_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMetricHistory'
@@ -682,23 +689,25 @@ type MockTrackingStore_GetMetricHistory_Call struct {
 //   - ctx context.Context
 //   - runID string
 //   - metricKey string
-func (_e *MockTrackingStore_Expecter) GetMetricHistory(ctx interface{}, runID interface{}, metricKey interface{}) *MockTrackingStore_GetMetricHistory_Call {
-	return &MockTrackingStore_GetMetricHistory_Call{Call: _e.mock.On("GetMetricHistory", ctx, runID, metricKey)}
+//   - pageToken string
+//   - maxResults *int32
+func (_e *MockTrackingStore_Expecter) GetMetricHistory(ctx interface{}, runID interface{}, metricKey interface{}, pageToken interface{}, maxResults interface{}) *MockTrackingStore_GetMetricHistory_Call {
+	return &MockTrackingStore_GetMetricHistory_Call{Call: _e.mock.On("GetMetricHistory", ctx, runID, metricKey, pageToken, maxResults)}
 }
 
-func (_c *MockTrackingStore_GetMetricHistory_Call) Run(run func(ctx context.Context, runID string, metricKey string)) *MockTrackingStore_GetMetricHistory_Call {
+func (_c *MockTrackingStore_GetMetricHistory_Call) Run(run func(ctx context.Context, runID string, metricKey string, pageToken string, maxResults *int32)) *MockTrackingStore_GetMetricHistory_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(*int32))
 	})
 	return _c
 }
 
-func (_c *MockTrackingStore_GetMetricHistory_Call) Return(_a0 []*entities.Metric, _a1 *contract.Error) *MockTrackingStore_GetMetricHistory_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockTrackingStore_GetMetricHistory_Call) Return(_a0 []*entities.Metric, _a1 string, _a2 *contract.Error) *MockTrackingStore_GetMetricHistory_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockTrackingStore_GetMetricHistory_Call) RunAndReturn(run func(context.Context, string, string) ([]*entities.Metric, *contract.Error)) *MockTrackingStore_GetMetricHistory_Call {
+func (_c *MockTrackingStore_GetMetricHistory_Call) RunAndReturn(run func(context.Context, string, string, string, *int32) ([]*entities.Metric, string, *contract.Error)) *MockTrackingStore_GetMetricHistory_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -945,6 +954,67 @@ func (_c *MockTrackingStore_GetTraceTag_Call) Return(_a0 *entities.TraceTag, _a1
 }
 
 func (_c *MockTrackingStore_GetTraceTag_Call) RunAndReturn(run func(context.Context, string, string) (*entities.TraceTag, *contract.Error)) *MockTrackingStore_GetTraceTag_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetTraceV3Info provides a mock function with given fields: ctx, traceID
+func (_m *MockTrackingStore) GetTraceV3Info(ctx context.Context, traceID string) (*entities.TraceInfoV3, *contract.Error) {
+	ret := _m.Called(ctx, traceID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTraceV3Info")
+	}
+
+	var r0 *entities.TraceInfoV3
+	var r1 *contract.Error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*entities.TraceInfoV3, *contract.Error)); ok {
+		return rf(ctx, traceID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *entities.TraceInfoV3); ok {
+		r0 = rf(ctx, traceID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*entities.TraceInfoV3)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) *contract.Error); ok {
+		r1 = rf(ctx, traceID)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*contract.Error)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockTrackingStore_GetTraceV3Info_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTraceV3Info'
+type MockTrackingStore_GetTraceV3Info_Call struct {
+	*mock.Call
+}
+
+// GetTraceV3Info is a helper method to define mock.On call
+//   - ctx context.Context
+//   - traceID string
+func (_e *MockTrackingStore_Expecter) GetTraceV3Info(ctx interface{}, traceID interface{}) *MockTrackingStore_GetTraceV3Info_Call {
+	return &MockTrackingStore_GetTraceV3Info_Call{Call: _e.mock.On("GetTraceV3Info", ctx, traceID)}
+}
+
+func (_c *MockTrackingStore_GetTraceV3Info_Call) Run(run func(ctx context.Context, traceID string)) *MockTrackingStore_GetTraceV3Info_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockTrackingStore_GetTraceV3Info_Call) Return(_a0 *entities.TraceInfoV3, _a1 *contract.Error) *MockTrackingStore_GetTraceV3Info_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockTrackingStore_GetTraceV3Info_Call) RunAndReturn(run func(context.Context, string) (*entities.TraceInfoV3, *contract.Error)) *MockTrackingStore_GetTraceV3Info_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1654,6 +1724,69 @@ func (_c *MockTrackingStore_SetTraceTag_Call) Return(_a0 error) *MockTrackingSto
 }
 
 func (_c *MockTrackingStore_SetTraceTag_Call) RunAndReturn(run func(context.Context, string, string, string) error) *MockTrackingStore_SetTraceTag_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetTraceV3 provides a mock function with given fields: ctx, info, metadata, tags
+func (_m *MockTrackingStore) SetTraceV3(ctx context.Context, info *entities.TraceInfoV3, metadata []*entities.TraceRequestMetadata, tags []*entities.TraceTag) (*entities.TraceInfoV3, *contract.Error) {
+	ret := _m.Called(ctx, info, metadata, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetTraceV3")
+	}
+
+	var r0 *entities.TraceInfoV3
+	var r1 *contract.Error
+	if rf, ok := ret.Get(0).(func(context.Context, *entities.TraceInfoV3, []*entities.TraceRequestMetadata, []*entities.TraceTag) (*entities.TraceInfoV3, *contract.Error)); ok {
+		return rf(ctx, info, metadata, tags)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *entities.TraceInfoV3, []*entities.TraceRequestMetadata, []*entities.TraceTag) *entities.TraceInfoV3); ok {
+		r0 = rf(ctx, info, metadata, tags)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*entities.TraceInfoV3)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *entities.TraceInfoV3, []*entities.TraceRequestMetadata, []*entities.TraceTag) *contract.Error); ok {
+		r1 = rf(ctx, info, metadata, tags)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*contract.Error)
+		}
+	}
+
+	return r0, r1
+}
+
+// MockTrackingStore_SetTraceV3_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetTraceV3'
+type MockTrackingStore_SetTraceV3_Call struct {
+	*mock.Call
+}
+
+// SetTraceV3 is a helper method to define mock.On call
+//   - ctx context.Context
+//   - info *entities.TraceInfoV3
+//   - metadata []*entities.TraceRequestMetadata
+//   - tags []*entities.TraceTag
+func (_e *MockTrackingStore_Expecter) SetTraceV3(ctx interface{}, info interface{}, metadata interface{}, tags interface{}) *MockTrackingStore_SetTraceV3_Call {
+	return &MockTrackingStore_SetTraceV3_Call{Call: _e.mock.On("SetTraceV3", ctx, info, metadata, tags)}
+}
+
+func (_c *MockTrackingStore_SetTraceV3_Call) Run(run func(ctx context.Context, info *entities.TraceInfoV3, metadata []*entities.TraceRequestMetadata, tags []*entities.TraceTag)) *MockTrackingStore_SetTraceV3_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*entities.TraceInfoV3), args[2].([]*entities.TraceRequestMetadata), args[3].([]*entities.TraceTag))
+	})
+	return _c
+}
+
+func (_c *MockTrackingStore_SetTraceV3_Call) Return(_a0 *entities.TraceInfoV3, _a1 *contract.Error) *MockTrackingStore_SetTraceV3_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockTrackingStore_SetTraceV3_Call) RunAndReturn(run func(context.Context, *entities.TraceInfoV3, []*entities.TraceRequestMetadata, []*entities.TraceTag) (*entities.TraceInfoV3, *contract.Error)) *MockTrackingStore_SetTraceV3_Call {
 	_c.Call.Return(run)
 	return _c
 }

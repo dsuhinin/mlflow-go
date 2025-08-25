@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/mlflow/mlflow-go-backend/pkg/entities"
+	"github.com/mlflow/mlflow-go-backend/pkg/utils"
 )
 
 const (
@@ -17,6 +18,9 @@ const (
 type TraceInfo struct {
 	RequestID            string                 `gorm:"column:request_id;primaryKey"`
 	ExperimentID         string                 `gorm:"column:experiment_id"`
+	ClientRequestID      sql.NullString         `gorm:"column:client_request_id"`
+	RequestPreview       sql.NullString         `gorm:"column:request_preview"`
+	ResponsePreview      sql.NullString         `gorm:"column:request_preview"`
 	TimestampMS          int64                  `gorm:"column:timestamp_ms"`
 	ExecutionTimeMS      sql.NullInt64          `gorm:"column:execution_time_ms"`
 	Status               string                 `gorm:"column:status"`
@@ -30,11 +34,11 @@ func (ti TraceInfo) TableName() string {
 
 func (ti TraceInfo) ToEntity() *entities.TraceInfo {
 	traceInfo := entities.TraceInfo{
-		RequestID:            ti.RequestID,
+		Tags:                 make([]*entities.TraceTag, 0, len(ti.Tags)),
 		Status:               ti.Status,
+		RequestID:            ti.RequestID,
 		ExperimentID:         ti.ExperimentID,
 		TimestampMS:          ti.TimestampMS,
-		Tags:                 make([]*entities.TraceTag, 0, len(ti.Tags)),
 		TraceRequestMetadata: make([]*entities.TraceRequestMetadata, 0, len(ti.TraceRequestMetadata)),
 	}
 
@@ -51,4 +55,41 @@ func (ti TraceInfo) ToEntity() *entities.TraceInfo {
 	}
 
 	return &traceInfo
+}
+
+func (ti TraceInfo) ToTraceInfoV3Entity() *entities.TraceInfoV3 {
+	traceInfoV3 := entities.TraceInfoV3{
+		Tags:                 make([]*entities.TraceTag, 0, len(ti.Tags)),
+		Status:               ti.Status,
+		RequestID:            ti.RequestID,
+		ExperimentID:         ti.ExperimentID,
+		TimestampMS:          ti.TimestampMS,
+		TraceRequestMetadata: make([]*entities.TraceRequestMetadata, 0, len(ti.TraceRequestMetadata)),
+	}
+
+	if ti.ExecutionTimeMS.Valid {
+		traceInfoV3.ExecutionTimeMS = utils.PtrTo(ti.ExecutionTimeMS.Int64)
+	}
+
+	if ti.ClientRequestID.Valid {
+		traceInfoV3.ClientRequestID = utils.PtrTo(ti.ClientRequestID.String)
+	}
+
+	if ti.ResponsePreview.Valid {
+		traceInfoV3.ResponsePreview = utils.PtrTo(ti.ResponsePreview.String)
+	}
+
+	if ti.RequestPreview.Valid {
+		traceInfoV3.RequestPreview = utils.PtrTo(ti.RequestPreview.String)
+	}
+
+	for _, tag := range ti.Tags {
+		traceInfoV3.Tags = append(traceInfoV3.Tags, tag.ToEntity())
+	}
+
+	for _, metadata := range ti.TraceRequestMetadata {
+		traceInfoV3.TraceRequestMetadata = append(traceInfoV3.TraceRequestMetadata, metadata.ToEntity())
+	}
+
+	return &traceInfoV3
 }

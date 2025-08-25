@@ -1,3 +1,4 @@
+//nolint:dupl
 package entities
 
 import "github.com/mlflow/mlflow-go-backend/pkg/protos"
@@ -21,6 +22,18 @@ func TagsFromStartTraceProtoInput(protoTags []*protos.TraceTag) []*TraceTag {
 		entityTags = append(entityTags, &TraceTag{
 			Key:   tag.GetKey(),
 			Value: tag.GetValue(),
+		})
+	}
+
+	return entityTags
+}
+
+func TagsFromStartTraceV3ProtoInput(protoTags map[string]string) []*TraceTag {
+	entityTags := make([]*TraceTag, 0, len(protoTags))
+	for key, value := range protoTags {
+		entityTags = append(entityTags, &TraceTag{
+			Key:   key,
+			Value: value,
 		})
 	}
 
