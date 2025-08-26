@@ -1,7 +1,6 @@
 import contextlib
 import logging
 import sys
-from typing import Any, Literal
 
 import mlflow
 import pytest
@@ -19,11 +18,7 @@ _logger = logging.getLogger(__name__)
 
 @contextlib.contextmanager
 def _init_server(
-    backend_uri: str,
-    root_artifact_uri: str,
-    extra_env: dict[str, Any] | None = None,
-    app: str | None = None,
-    server_type: Literal["flask", "fastapi"] = "fastapi",
+    backend_uri, root_artifact_uri, extra_env=None, app="mlflow.server:app", server_type=None
 ):
     """
     Launch a new REST server using the tracking store specified by backend_uri and root artifact
