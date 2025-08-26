@@ -21,6 +21,10 @@ def pytest_configure(config):
             "tests/override_server.py",
         ),
         (
+            "tests.tracking.test_rest_tracking.test_rest_store_logs_spans_via_otel_endpoint",
+            "tests/override_test_rest_tracking.py",
+        ),
+        (
             "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore",
             "tests/override_tracking_store.py",
         ),
